@@ -947,6 +947,21 @@
       }, 3000);
     }
 
+    // --- BUILD EXPLICIT MULTI-PANEL TEMPLATE ---
+    function buildPanelTemplate(panelCount, endingBeat) {
+      const lines = [];
+      for (let i = 1; i <= panelCount; i++) {
+        const roleNote =
+          i === 1
+            ? "(Setup the scene & characters)"
+            : i === panelCount
+            ? `(Punchline & ${endingBeat})`
+            : "(Escalate the comic conflict)";
+        lines.push(`PANEL ${i} ${roleNote}:\n[ART]: ...\n[DIALOGUE]: ...`);
+      }
+      return lines.join("\n\n");
+    }
+
     // --- HELPER: CALL GEMINI ENDPOINT WITH AUTO-DISCOVERY FALLBACK ---
     async function requestComicFromGemini(apiKey, modelName, prompt, signal) {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent?key=${encodeURIComponent(apiKey)}`;
@@ -957,7 +972,7 @@
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
-            maxOutputTokens: 700,
+            maxOutputTokens: 2500,
             temperature: 0.85
           }
         })
@@ -998,18 +1013,27 @@
       const panelCount = state.layout.startsWith("6") ? 6 : 4;
       const customPremise = document.getElementById("optionalPremise").value.trim();
       let activeModel = modelSelect.value || "gemini-3.5-flash";
+      const panelBlueprint = buildPanelTemplate(panelCount, state.ending);
 
-      const prompt = `Write a punchy, funny ${state.layout} newspaper comic strip script in the style of "${state.series}".
-Series: ${state.series}
-Cast: ${state.characters.join(", ")}
-Panels: ${panelCount} numbered panels
-Style: ${state.colorMode}, Era ${state.period}
-Tone: ${state.tone} | Conflict: ${state.conflict} | Ending: ${state.ending}
-${customPremise ? `Premise: ${customPremise}` : ""}
+      const prompt = `You are a master vintage newspaper cartoonist writing a complete ${panelCount}-panel comic strip for "${state.series}".
 
-Format concisely:
-- Line 1: Catchy Comic Title
-- Panel 1 to Panel ${panelCount}: Give a 1-sentence [ART] visual description and crisp [DIALOGUE] speech balloons.`;
+CRITICAL REQUIREMENT: You MUST write ALL ${panelCount} panels (Panel 1 through Panel ${panelCount}). Do NOT stop after Panel 1.
+
+Parameters:
+- Comic Series: ${state.series}
+- Cast: ${state.characters.join(", ")}
+- Format: ${state.layout} (${panelCount} complete panels)
+- Visual Style: ${state.colorMode}, Historical Era ${state.period}
+- Gag Tone: ${state.tone}
+- Conflict Engine: ${state.conflict}
+- Final Panel Ending Beat: ${state.ending}
+${customPremise ? `- Custom Premise: ${customPremise}` : ""}
+
+Follow this exact structure from start to finish:
+
+TITLE: [Catchy Vintage Strip Title]
+
+${panelBlueprint}`;
 
       generateBtn.disabled = true;
       generateBtn.textContent = "⏳ Generating...";
@@ -1018,15 +1042,14 @@ Format concisely:
       outputContainer.hidden = false;
       stripTitleEl.textContent = `${state.series.toUpperCase()} — ${state.layout.toUpperCase()}`;
       stripMetaEl.textContent = `${state.period} • ${state.colorMode} • ${state.tone} • ${state.ending}`;
-      stripContentEl.textContent = "Inking panels with " + activeModel + "...";
+      stripContentEl.textContent = `Inking all ${panelCount} panels with ${activeModel}...`;
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      const timeoutId = setTimeout(() => controller.abort(), 35000);
 
       try {
         let result = await requestComicFromGemini(apiKey, activeModel, prompt, controller.signal);
 
-        // If the selected model ID is unavailable on this key, auto-discover the newest active model
         if (!result.ok && (result.status === 404 || result.status === 400)) {
           progressLabel.textContent = "Locating active Gemini model...";
           const discoveredModel = await discoverActiveGeminiModel(apiKey, controller.signal);
@@ -1054,7 +1077,7 @@ Format concisely:
         clearTimeout(timeoutId);
         finishProgress(startTime, false);
         const message = err.name === "AbortError"
-          ? "Request timed out after 30 seconds. Please check your internet connection and try again."
+          ? "Request timed out after 35 seconds. Please check your internet connection and try again."
           : err.message;
         stripContentEl.textContent =
           "❌ Error calling Google AI Studio:\n" +
