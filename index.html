@@ -613,7 +613,7 @@
         <div class="control-group" style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-subtle);">
           <span class="control-label">How this works on GitHub Pages</span>
           <ul style="margin: 0.4rem 0 0; padding-left: 1.25rem; color: var(--ink-secondary);">
-            <li>This page calls Google's <strong>gemini-2.5-flash</strong> model directly from your browser when you click <em>Write Comic Strip Script</em>.</li>
+            <li>This page calls Google's <strong>gemini-3.8-flash</strong> model directly from your browser when you click <em>Write Comic Strip Script</em>.</li>
             <li>If you open this website on another device (such as your iPhone or desktop), simply open this Settings tab on that device and save your key once.</li>
           </ul>
         </div>
@@ -873,7 +873,7 @@ Formatting Instructions:
 
       try {
         const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
