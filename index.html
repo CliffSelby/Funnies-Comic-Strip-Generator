@@ -48,7 +48,6 @@
       line-height: 1.55;
     }
 
-    /* Focus visibility for keyboard and accessibility */
     button:focus-visible,
     input:focus-visible,
     textarea:focus-visible {
@@ -267,7 +266,7 @@
       font-family: Georgia, "Times New Roman", serif;
     }
 
-    /* Optional Custom Topic Input */
+    /* Inputs */
     .text-input {
       width: 100%;
       padding: 0.65rem 0.85rem;
@@ -278,14 +277,13 @@
       color: var(--ink-primary);
     }
 
-    /* Action Bar & Generate Button */
+    /* Action Bar & Progress Indicator */
     .generate-bar {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      justify-content: space-between;
       gap: 1rem;
-      margin-top: 0.5rem;
+      margin-top: 0.75rem;
     }
 
     .btn-primary {
@@ -299,6 +297,7 @@
       cursor: pointer;
       box-shadow: 3px 3px 0px var(--border-strong);
       transition: background-color 0.15s ease, transform 0.08s ease;
+      flex-shrink: 0;
     }
 
     .btn-primary:hover:not(:disabled) {
@@ -311,8 +310,50 @@
     }
 
     .btn-primary:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
+      background-color: #8c857b;
+      color: #f5f2eb;
+      cursor: wait;
+      box-shadow: none;
+    }
+
+    .progress-box {
+      flex: 1 1 260px;
+      display: none;
+      flex-direction: column;
+      gap: 0.35rem;
+      background-color: var(--bg-newsprint);
+      border: 2px solid var(--border-strong);
+      border-radius: 10px;
+      padding: 0.55rem 0.9rem;
+    }
+
+    .progress-box.active {
+      display: flex;
+    }
+
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--accent-primary);
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 12px;
+      background-color: #e2dccf;
+      border-radius: 999px;
+      border: 1px solid var(--border-strong);
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background-color: var(--accent-primary);
+      transition: width 0.25s ease;
     }
 
     .btn-secondary {
@@ -471,9 +512,7 @@
           <span class="control-label">
             Featured Characters <span class="control-hint">(Updates automatically by series — click to toggle cast)</span>
           </span>
-          <div class="pill-row" id="characterPills" role="group" aria-label="Featured Characters">
-            <!-- Populated dynamically by JavaScript -->
-          </div>
+          <div class="pill-row" id="characterPills" role="group" aria-label="Featured Characters"></div>
         </div>
 
         <div class="control-group">
@@ -542,9 +581,7 @@
             <button type="button" class="pill-btn" data-value="2010-present" aria-pressed="false">2010-present</button>
           </div>
 
-          <div id="periodPreview" class="period-preview" aria-live="polite">
-            <!-- Populated automatically by JavaScript -->
-          </div>
+          <div id="periodPreview" class="period-preview" aria-live="polite"></div>
         </div>
 
         <div class="control-group">
@@ -559,10 +596,22 @@
           />
         </div>
 
+        <!-- ACTION BUTTON + LIVE PROGRESS BAR -->
         <div class="generate-bar">
           <button type="button" id="generateBtn" class="btn-primary">
             🖋️ Write Comic Strip Script
           </button>
+
+          <div id="progressBox" class="progress-box" role="status" aria-live="polite">
+            <div class="progress-header">
+              <span id="progressLabel">Connecting to Google AI Studio...</span>
+              <span id="progressPercent">0% (0.0s)</span>
+            </div>
+            <div class="progress-track">
+              <div id="progressFill" class="progress-fill"></div>
+            </div>
+          </div>
+
           <span id="keyHintText" class="control-hint"></span>
         </div>
       </div>
@@ -611,10 +660,10 @@
         </div>
 
         <div class="control-group" style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-subtle);">
-          <span class="control-label">How this works on GitHub Pages</span>
+          <span class="control-label">Fast Generation Mode</span>
           <ul style="margin: 0.4rem 0 0; padding-left: 1.25rem; color: var(--ink-secondary);">
-            <li>This page calls Google's <strong>gemini-3.8-flash</strong> model directly from your browser when you click <em>Write Comic Strip Script</em>.</li>
-            <li>If you open this website on another device (such as your iPhone or desktop), simply open this Settings tab on that device and save your key once.</li>
+            <li>Configured to use Google's fast <strong>gemini-2.5-flash-lite</strong> model with instant response mode so scripts appear in just a few seconds.</li>
+            <li>Includes a live progress meter and an automatic 30-second timeout protection.</li>
           </ul>
         </div>
       </div>
@@ -692,6 +741,11 @@
     const generateBtn = document.getElementById("generateBtn");
     const keyHintText = document.getElementById("keyHintText");
 
+    const progressBox = document.getElementById("progressBox");
+    const progressLabel = document.getElementById("progressLabel");
+    const progressPercent = document.getElementById("progressPercent");
+    const progressFill = document.getElementById("progressFill");
+
     const outputContainer = document.getElementById("outputContainer");
     const stripTitleEl = document.getElementById("stripTitle");
     const stripMetaEl = document.getElementById("stripMeta");
@@ -756,7 +810,6 @@
 
         btn.addEventListener("click", () => {
           const currentlySelected = btn.getAttribute("aria-pressed") === "true";
-          // Prevent deselecting the very last character
           if (currentlySelected && state.characters.length === 1) {
             return;
           }
@@ -792,7 +845,6 @@
       updatePeriodPreview(selectedPeriod);
     });
 
-    // Initial render
     renderCharacterPills(state.series);
     updatePeriodPreview(state.period);
 
@@ -802,7 +854,7 @@
       if (savedKey && savedKey.trim().length > 0) {
         apiStatusBanner.className = "status-banner status-ok";
         apiStatusBanner.textContent = "✅ Google AI Studio API Key is saved in this browser and ready to use.";
-        keyHintText.textContent = "✅ Connected to Google AI Studio";
+        keyHintText.textContent = "✅ Connected";
         apiKeyInput.value = savedKey;
       } else {
         apiStatusBanner.className = "status-banner status-warn";
@@ -830,7 +882,54 @@
 
     refreshKeyStatus();
 
-    // --- CALL GOOGLE AI STUDIO (GEMINI API) ---
+    // --- PROGRESS BAR CONTROLLER ---
+    let progressTimer = null;
+
+    function startProgress() {
+      const startTime = Date.now();
+      let pct = 10;
+      progressBox.classList.add("active");
+      keyHintText.style.display = "none";
+      progressFill.style.width = "10%";
+      progressLabel.textContent = "Sending choices to AI Studio...";
+      progressPercent.textContent = "10% (0.0s)";
+
+      progressTimer = setInterval(() => {
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+        if (pct < 88) {
+          pct += Math.max(1, Math.round((90 - pct) * 0.14));
+        }
+        if (pct >= 25 && pct < 55) {
+          progressLabel.textContent = "Drafting vintage panel scenes...";
+        } else if (pct >= 55 && pct < 80) {
+          progressLabel.textContent = "Lettering speech balloons...";
+        } else if (pct >= 80) {
+          progressLabel.textContent = "Finishing final punchline...";
+        }
+        progressFill.style.width = `${pct}%`;
+        progressPercent.textContent = `${pct}% (${elapsed}s)`;
+      }, 200);
+
+      return startTime;
+    }
+
+    function finishProgress(startTime, success) {
+      if (progressTimer) {
+        clearInterval(progressTimer);
+        progressTimer = null;
+      }
+      const totalSeconds = ((Date.now() - startTime) / 1000).toFixed(1);
+      progressFill.style.width = success ? "100%" : "0%";
+      progressLabel.textContent = success ? "✅ Script complete!" : "❌ Generation stopped";
+      progressPercent.textContent = success ? `100% (${totalSeconds}s)` : `${totalSeconds}s`;
+
+      setTimeout(() => {
+        progressBox.classList.remove("active");
+        keyHintText.style.display = "";
+      }, 3000);
+    }
+
+    // --- CALL GOOGLE AI STUDIO (FAST MODE) ---
     generateBtn.addEventListener("click", async () => {
       const apiKey = localStorage.getItem(STORAGE_KEY);
       if (!apiKey) {
@@ -842,47 +941,49 @@
       const panelCount = state.layout.startsWith("6") ? 6 : 4;
       const customPremise = document.getElementById("optionalPremise").value.trim();
 
-      const prompt = `You are a master vintage newspaper comic strip writer and cartoonist.
-Write a complete, hilarious, authentic ${state.layout} comic strip script in the classic style of "${state.series}".
+      const prompt = `Write a punchy, funny ${state.layout} newspaper comic strip script in the style of "${state.series}".
+Series: ${state.series}
+Cast: ${state.characters.join(", ")}
+Panels: ${panelCount} numbered panels
+Style: ${state.colorMode}, Era ${state.period}
+Tone: ${state.tone} | Conflict: ${state.conflict} | Ending: ${state.ending}
+${customPremise ? `Premise: ${customPremise}` : ""}
 
-Strict Creative Parameters:
-- Comic Series: ${state.series}
-- Featured Characters: ${state.characters.join(", ")}
-- Layout: ${state.layout} (must have exactly ${panelCount} numbered panels)
-- Visual Style / Color Mode: ${state.colorMode}
-- Gag Tone: ${state.tone}
-- Conflict Engine: ${state.conflict}
-- Ending Beat: ${state.ending}
-- Historical Period: ${state.period} (${PERIOD_DESCRIPTIONS[state.period]})
-${customPremise ? `- Special Prop / Premise to Include: ${customPremise}` : ""}
-
-Formatting Instructions:
-1. Start with a catchy vintage comic strip title on the first line.
-2. Write Panel 1 through Panel ${panelCount}.
-3. For each panel, provide:
-   - [ART & VISUAL DIRECTION]: Describe the composition, vintage ink/color details, character expressions, and props.
-   - [DIALOGUE & SOUND EFFECTS]: Authentic, punchy speech balloons and classic comic sound effects (e.g., POW!, ZZZIP!, CLATTER!).
-4. Ensure the final panel cleanly delivers the "${state.ending}" ending beat.`;
+Format concisely:
+- Line 1: Catchy Comic Title
+- Panel 1 to Panel ${panelCount}: Give a 1-sentence [ART] visual description and crisp [DIALOGUE] speech balloons.`;
 
       generateBtn.disabled = true;
-      generateBtn.textContent = "⏳ Inking Comic Strip...";
+      generateBtn.textContent = "⏳ Generating...";
+      const startTime = startProgress();
+
       outputContainer.hidden = false;
       stripTitleEl.textContent = `${state.series.toUpperCase()} — ${state.layout.toUpperCase()}`;
       stripMetaEl.textContent = `${state.period} • ${state.colorMode} • ${state.tone} • ${state.ending}`;
-      stripContentEl.textContent = "Setting the printing press and lettering the speech balloons...";
+      stripContentEl.textContent = "Inking panels...";
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
 
       try {
         const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${encodeURIComponent(apiKey)}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            signal: controller.signal,
             body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt }] }]
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: {
+                maxOutputTokens: 700,
+                temperature: 0.85,
+                thinkingConfig: { thinkingBudget: 0 }
+              }
             })
           }
         );
 
+        clearTimeout(timeoutId);
         const data = await response.json();
 
         if (!response.ok) {
@@ -892,15 +993,21 @@ Formatting Instructions:
 
         const generatedText =
           data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-          "No script returned. Please try clicking Write Comic Strip Script again.";
+          "No script returned. Please click Write Comic Strip Script again.";
 
         stripContentEl.textContent = generatedText;
+        finishProgress(startTime, true);
         outputContainer.scrollIntoView({ behavior: "smooth", block: "nearest" });
       } catch (err) {
+        clearTimeout(timeoutId);
+        finishProgress(startTime, false);
+        const message = err.name === "AbortError"
+          ? "Request timed out after 30 seconds. Please check your internet connection and try again."
+          : err.message;
         stripContentEl.textContent =
           "❌ Error calling Google AI Studio:\n" +
-          err.message +
-          "\n\nPlease check that your API key in ⚙️ Administrator & Settings is valid and active.";
+          message +
+          "\n\nPlease verify your API key in ⚙️ Administrator & Settings.";
       } finally {
         generateBtn.disabled = false;
         generateBtn.textContent = "🖋️ Write Comic Strip Script";
