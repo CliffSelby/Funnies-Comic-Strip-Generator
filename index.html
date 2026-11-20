@@ -21,7 +21,7 @@
       --pill-active-bg: #1b4965;
       --pill-active-text: #ffffff;
       --focus-ring: #d97706;
-      --base-font-size: 17px;
+      --base-font-size: 16px;
       --radius-card: 12px;
       --radius-pill: 999px;
     }
@@ -31,8 +31,12 @@
       box-sizing: border-box;
     }
 
-    html.large-text {
+    html.large-print {
       --base-font-size: 21px;
+    }
+
+    html.small-print {
+      --base-font-size: 15px;
     }
 
     *, *::before, *::after {
@@ -49,6 +53,7 @@
     }
 
     button:focus-visible,
+    a:focus-visible,
     input:focus-visible,
     select:focus-visible,
     textarea:focus-visible {
@@ -88,23 +93,24 @@
       color: var(--ink-secondary);
     }
 
-    .a11y-toggle {
+    .print-size-btn {
       background-color: var(--pill-bg);
       color: var(--ink-primary);
       border: 2px solid var(--border-strong);
       border-radius: var(--radius-pill);
-      padding: 0.5rem 1rem;
+      padding: 0.5rem 1.05rem;
       font-size: 0.95rem;
-      font-weight: 700;
+      font-weight: 800;
       cursor: pointer;
       transition: background-color 0.15s ease, color 0.15s ease;
+      white-space: nowrap;
     }
 
-    .a11y-toggle:hover {
+    .print-size-btn:hover {
       background-color: var(--pill-hover);
     }
 
-    .a11y-toggle[aria-pressed="true"] {
+    .print-size-btn.is-large {
       background-color: var(--ink-primary);
       color: #ffffff;
     }
@@ -174,6 +180,15 @@
       box-shadow: 4px 4px 0px rgba(20, 20, 20, 0.12);
     }
 
+    .card-top-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.45rem;
+    }
+
     .section-badge {
       display: inline-block;
       background-color: var(--ink-primary);
@@ -184,7 +199,6 @@
       letter-spacing: 0.06em;
       padding: 0.2rem 0.65rem;
       border-radius: 4px;
-      margin-bottom: 0.45rem;
     }
 
     .card h2 {
@@ -363,14 +377,38 @@
       color: var(--ink-primary);
       border: 2px solid var(--border-strong);
       border-radius: var(--radius-pill);
-      padding: 0.6rem 1.2rem;
-      font-size: 0.95rem;
+      padding: 0.65rem 1.25rem;
+      font-size: 0.98rem;
       font-weight: 700;
       cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
     }
 
     .btn-secondary:hover {
       background-color: var(--pill-hover);
+    }
+
+    .btn-gemini {
+      background-color: var(--accent-primary);
+      color: #ffffff;
+      border: 2px solid var(--border-strong);
+      border-radius: var(--radius-pill);
+      padding: 0.65rem 1.35rem;
+      font-size: 0.98rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      box-shadow: 2px 2px 0px var(--border-strong);
+    }
+
+    .btn-gemini:hover {
+      background-color: var(--accent-hover);
     }
 
     /* Comic Output Area */
@@ -408,6 +446,16 @@
       font-family: Georgia, "Times New Roman", serif;
       white-space: pre-wrap;
       line-height: 1.65;
+    }
+
+    .output-actions {
+      margin-top: 1.35rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      gap: 0.85rem;
+      flex-wrap: wrap;
+      align-items: center;
     }
 
     .status-banner {
@@ -462,9 +510,9 @@
         <h1 class="brand-title">📰 The Daily Chronicle: Vintage Comic Strip Creator</h1>
         <p class="brand-subtitle">Classic Sunday &amp; Daily Newspaper Funnies Studio</p>
       </div>
-      <button type="button" id="a11yToggle" class="a11y-toggle" aria-pressed="false">
-        Aa Large Text
-      </button>
+      <a href="https://gemini.google.com/app" target="_blank" rel="noopener noreferrer" class="btn-gemini">
+        ✨ Open Gemini in New Tab
+      </a>
     </div>
   </header>
 
@@ -495,9 +543,14 @@
     <!-- TAB 1: FUNNIES GENERATOR -->
     <section id="panel-generator" class="view-panel active" role="tabpanel" aria-labelledby="tab-generator">
 
-      <!-- SECTION A -->
+      <!-- SECTION A (WITH TOP-RIGHT PRINT SIZE TOGGLE) -->
       <div class="card">
-        <span class="section-badge">Section A</span>
+        <div class="card-top-row">
+          <span class="section-badge">Section A</span>
+          <button type="button" id="printSizeToggle" class="print-size-btn" aria-pressed="false">
+            🔍 As Large Print
+          </button>
+        </div>
         <h2>Series, Cast &amp; Print Format</h2>
 
         <div class="control-group">
@@ -625,8 +678,20 @@
           <div id="stripMeta" class="newsprint-meta"></div>
         </div>
         <div id="stripContent" class="comic-output-body"></div>
-        <div style="margin-top: 1.25rem; display: flex; gap: 0.75rem; flex-wrap: wrap;">
-          <button type="button" id="copyScriptBtn" class="btn-secondary">📋 Copy Script</button>
+
+        <!-- OUTPUT ACTION BUTTONS: COPY TO CLIPBOARD + OPEN GEMINI IN NEW TAB -->
+        <div class="output-actions">
+          <button type="button" id="copyScriptBtn" class="btn-secondary">
+            📋 Copy Output Prompt to Clipboard
+          </button>
+          <a
+            href="https://gemini.google.com/app"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="btn-gemini"
+          >
+            ✨ Open Gemini in New Tab
+          </a>
         </div>
       </div>
 
@@ -723,6 +788,7 @@
 
     const STORAGE_KEY = "gemini_comic_creator_api_key";
     const MODEL_STORAGE_KEY = "gemini_comic_creator_model";
+    const PRINT_SIZE_STORAGE_KEY = "gemini_comic_creator_large_print";
 
     // --- STATE ---
     const state = {
@@ -737,7 +803,7 @@
     };
 
     // --- DOM ELEMENTS ---
-    const a11yToggle = document.getElementById("a11yToggle");
+    const printSizeToggle = document.getElementById("printSizeToggle");
     const tabGenerator = document.getElementById("tab-generator");
     const tabSettings = document.getElementById("tab-settings");
     const panelGenerator = document.getElementById("panel-generator");
@@ -765,10 +831,22 @@
     const apiStatusBanner = document.getElementById("apiStatusBanner");
     const modelSelect = document.getElementById("modelSelect");
 
-    // --- ACCESSIBILITY TOGGLE ---
-    a11yToggle.addEventListener("click", () => {
-      const isLarge = document.documentElement.classList.toggle("large-text");
-      a11yToggle.setAttribute("aria-pressed", String(isLarge));
+    // --- PRINT SIZE TOGGLE ("As Large Print" / "As Small Print") ---
+    function applyPrintSize(isLarge) {
+      document.documentElement.classList.toggle("large-print", isLarge);
+      document.documentElement.classList.toggle("small-print", !isLarge);
+      printSizeToggle.classList.toggle("is-large", isLarge);
+      printSizeToggle.setAttribute("aria-pressed", String(isLarge));
+      printSizeToggle.textContent = isLarge ? "🔎 As Small Print" : "🔍 As Large Print";
+      localStorage.setItem(PRINT_SIZE_STORAGE_KEY, isLarge ? "large" : "small");
+    }
+
+    const savedPrintPref = localStorage.getItem(PRINT_SIZE_STORAGE_KEY);
+    applyPrintSize(savedPrintPref === "large");
+
+    printSizeToggle.addEventListener("click", () => {
+      const currentlyLarge = document.documentElement.classList.contains("large-print");
+      applyPrintSize(!currentlyLarge);
     });
 
     // --- NAVIGATION TABS ---
@@ -1089,17 +1167,28 @@ ${panelBlueprint}`;
       }
     });
 
-    // --- COPY SCRIPT BUTTON ---
+    // --- COPY OUTPUT PROMPT TO CLIPBOARD ---
     copyScriptBtn.addEventListener("click", async () => {
+      const textToCopy = stripContentEl.textContent;
+      const originalText = copyScriptBtn.textContent;
       try {
-        await navigator.clipboard.writeText(stripContentEl.textContent);
-        const originalText = copyScriptBtn.textContent;
-        copyScriptBtn.textContent = "✅ Copied!";
+        await navigator.clipboard.writeText(textToCopy);
+        copyScriptBtn.textContent = "✅ Copied to Clipboard!";
         setTimeout(() => {
           copyScriptBtn.textContent = originalText;
-        }, 2000);
+        }, 2200);
       } catch {
-        copyScriptBtn.textContent = "Select text above to copy";
+        // Fallback copy method if clipboard permissions are restricted
+        const tempArea = document.createElement("textarea");
+        tempArea.value = textToCopy;
+        document.body.appendChild(tempArea);
+        tempArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(tempArea);
+        copyScriptBtn.textContent = "✅ Copied to Clipboard!";
+        setTimeout(() => {
+          copyScriptBtn.textContent = originalText;
+        }, 2200);
       }
     });
   </script>
