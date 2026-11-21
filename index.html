@@ -14,6 +14,8 @@
       --accent-primary: #1b4965;
       --accent-hover: #13354a;
       --accent-warm: #b54724;
+      --accent-green: #1e6b3a;
+      --accent-green-hover: #154f2a;
       --border-strong: #1f1f1f;
       --border-subtle: #c9c3b8;
       --pill-bg: #f0ece1;
@@ -391,6 +393,25 @@
       background-color: var(--pill-hover);
     }
 
+    .btn-download {
+      background-color: var(--accent-green);
+      color: #ffffff;
+      border: 2px solid var(--border-strong);
+      border-radius: var(--radius-pill);
+      padding: 0.65rem 1.35rem;
+      font-size: 0.98rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      box-shadow: 2px 2px 0px var(--border-strong);
+    }
+
+    .btn-download:hover {
+      background-color: var(--accent-green-hover);
+    }
+
     .btn-gemini {
       background-color: var(--accent-primary);
       color: #ffffff;
@@ -456,6 +477,21 @@
       gap: 0.85rem;
       flex-wrap: wrap;
       align-items: center;
+    }
+
+    .folder-note {
+      width: 100%;
+      margin-top: 0.35rem;
+      font-size: 0.88rem;
+      color: var(--ink-secondary);
+    }
+
+    .folder-note code {
+      background-color: #eae4d7;
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      font-weight: 700;
+      color: var(--ink-primary);
     }
 
     .status-banner {
@@ -679,10 +715,13 @@
         </div>
         <div id="stripContent" class="comic-output-body"></div>
 
-        <!-- OUTPUT ACTION BUTTONS: COPY TO CLIPBOARD + OPEN GEMINI IN NEW TAB -->
+        <!-- OUTPUT ACTION BUTTONS -->
         <div class="output-actions">
           <button type="button" id="copyScriptBtn" class="btn-secondary">
             📋 Copy Output Prompt to Clipboard
+          </button>
+          <button type="button" id="downloadFunniesBtn" class="btn-download">
+            💾 Download To Funnies Folder On My Computer
           </button>
           <a
             href="https://gemini.google.com/app"
@@ -692,6 +731,9 @@
           >
             ✨ Open Gemini in New Tab
           </a>
+          <div id="folderStatusNote" class="folder-note">
+            Target folder: <code>C:\Users\18645\Desktop\Funnies Folder</code>
+          </div>
         </div>
       </div>
 
@@ -789,6 +831,7 @@
     const STORAGE_KEY = "gemini_comic_creator_api_key";
     const MODEL_STORAGE_KEY = "gemini_comic_creator_model";
     const PRINT_SIZE_STORAGE_KEY = "gemini_comic_creator_large_print";
+    const TARGET_FOLDER_PATH = "C:\\Users\\18645\\Desktop\\Funnies Folder";
 
     // --- STATE ---
     const state = {
@@ -824,6 +867,8 @@
     const stripMetaEl = document.getElementById("stripMeta");
     const stripContentEl = document.getElementById("stripContent");
     const copyScriptBtn = document.getElementById("copyScriptBtn");
+    const downloadFunniesBtn = document.getElementById("downloadFunniesBtn");
+    const folderStatusNote = document.getElementById("folderStatusNote");
 
     const apiKeyInput = document.getElementById("apiKeyInput");
     const saveKeyBtn = document.getElementById("saveKeyBtn");
@@ -1178,7 +1223,6 @@ ${panelBlueprint}`;
           copyScriptBtn.textContent = originalText;
         }, 2200);
       } catch {
-        // Fallback copy method if clipboard permissions are restricted
         const tempArea = document.createElement("textarea");
         tempArea.value = textToCopy;
         document.body.appendChild(tempArea);
@@ -1190,6 +1234,73 @@ ${panelBlueprint}`;
           copyScriptBtn.textContent = originalText;
         }, 2200);
       }
+    });
+
+    // --- DOWNLOAD TO FUNNIES FOLDER ON MY COMPUTER ---
+    downloadFunniesBtn.addEventListener("click", async () => {
+      const scriptText = stripContentEl.textContent;
+      const safeSeries = state.series.replace(/[^a-z0-9]+/gi, "_").replace(/^_|_$/g, "");
+      const today = new Date().toISOString().slice(0, 10);
+      const suggestedFilename = `${safeSeries}_${today}.txt`;
+
+      const fileHeader =
+        `THE DAILY CHRONICLE — VINTAGE COMIC STRIP SCRIPT\n` +
+        `Series: ${state.series}\n` +
+        `Meta: ${stripMetaEl.textContent}\n` +
+        `Saved Folder: ${TARGET_FOLDER_PATH}\n` +
+        `============================================================\n\n`;
+
+      const fullFileContent = fileHeader + scriptText;
+      const originalBtnText = downloadFunniesBtn.textContent;
+
+      // Use modern "Save As" picker when supported (Chrome/Edge) so user can select Desktop\Funnies Folder directly
+      if (window.showSaveFilePicker) {
+        try {
+          const fileHandle = await window.showSaveFilePicker({
+            suggestedName: suggestedFilename,
+            startIn: "desktop",
+            types: [
+              {
+                description: "Comic Strip Script Text File",
+                accept: { "text/plain": [".txt"] }
+              }
+            ]
+          });
+          const writable = await fileHandle.createWritable();
+          await writable.write(fullFileContent);
+          await writable.close();
+
+          downloadFunniesBtn.textContent = "✅ Saved to Funnies Folder!";
+          folderStatusNote.innerHTML = `✅ Saved <strong>${suggestedFilename}</strong> to <code>${TARGET_FOLDER_PATH}</code>`;
+          setTimeout(() => {
+            downloadFunniesBtn.textContent = originalBtnText;
+          }, 2600);
+          return;
+        } catch (err) {
+          // If user cancels the Save dialog, simply stop without error
+          if (err && err.name === "AbortError") {
+            return;
+          }
+        }
+      }
+
+      // Standard browser download fallback
+      const blob = new Blob([fullFileContent], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = suggestedFilename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      downloadFunniesBtn.textContent = "✅ Downloaded!";
+      folderStatusNote.innerHTML =
+        `✅ Downloaded <strong>${suggestedFilename}</strong> — move or save it into <code>${TARGET_FOLDER_PATH}</code>`;
+      setTimeout(() => {
+        downloadFunniesBtn.textContent = originalBtnText;
+      }, 2600);
     });
   </script>
 </body>
