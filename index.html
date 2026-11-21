@@ -408,6 +408,10 @@
       box-shadow: 2px 2px 0px var(--border-strong);
     }
 
+    .btn-download[hidden] {
+      display: none !important;
+    }
+
     .btn-download:hover {
       background-color: var(--accent-green-hover);
     }
@@ -479,11 +483,19 @@
       align-items: center;
     }
 
+    .output-actions[hidden] {
+      display: none !important;
+    }
+
     .folder-note {
       width: 100%;
       margin-top: 0.35rem;
       font-size: 0.88rem;
       color: var(--ink-secondary);
+    }
+
+    .folder-note[hidden] {
+      display: none !important;
     }
 
     .folder-note code {
@@ -715,13 +727,13 @@
         </div>
         <div id="stripContent" class="comic-output-body"></div>
 
-        <!-- OUTPUT ACTION BUTTONS -->
-        <div class="output-actions">
+        <!-- OUTPUT ACTION BUTTONS (APPEAR ONLY AFTER GEMINI FINISHES) -->
+        <div id="outputActionsBar" class="output-actions" hidden>
           <button type="button" id="copyScriptBtn" class="btn-secondary">
             📋 Copy Output Prompt to Clipboard
           </button>
-          <button type="button" id="downloadFunniesBtn" class="btn-download">
-            💾 Download To Funnies Folder On My Computer
+          <button type="button" id="downloadFunniesBtn" class="btn-download" hidden>
+            💾 Download To My Funnies Folder
           </button>
           <a
             href="https://gemini.google.com/app"
@@ -731,7 +743,7 @@
           >
             ✨ Open Gemini in New Tab
           </a>
-          <div id="folderStatusNote" class="folder-note">
+          <div id="folderStatusNote" class="folder-note" hidden>
             Target folder: <code>C:\Users\18645\Desktop\Funnies Folder</code>
           </div>
         </div>
@@ -866,6 +878,7 @@
     const stripTitleEl = document.getElementById("stripTitle");
     const stripMetaEl = document.getElementById("stripMeta");
     const stripContentEl = document.getElementById("stripContent");
+    const outputActionsBar = document.getElementById("outputActionsBar");
     const copyScriptBtn = document.getElementById("copyScriptBtn");
     const downloadFunniesBtn = document.getElementById("downloadFunniesBtn");
     const folderStatusNote = document.getElementById("folderStatusNote");
@@ -1162,6 +1175,11 @@ ${panelBlueprint}`;
       generateBtn.textContent = "⏳ Generating...";
       const startTime = startProgress(activeModel);
 
+      // Hide download and action buttons until Gemini finishes creating the output
+      outputActionsBar.hidden = true;
+      downloadFunniesBtn.hidden = true;
+      folderStatusNote.hidden = true;
+
       outputContainer.hidden = false;
       stripTitleEl.textContent = `${state.series.toUpperCase()} — ${state.layout.toUpperCase()}`;
       stripMetaEl.textContent = `${state.period} • ${state.colorMode} • ${state.tone} • ${state.ending}`;
@@ -1194,6 +1212,13 @@ ${panelBlueprint}`;
           "No script returned. Please click Write Comic Strip Script again.";
 
         stripContentEl.textContent = generatedText;
+
+        // Reveal the action bar and "Download To My Funnies Folder" button now that generation succeeded
+        folderStatusNote.innerHTML = `Target folder: <code>${TARGET_FOLDER_PATH}</code>`;
+        outputActionsBar.hidden = false;
+        downloadFunniesBtn.hidden = false;
+        folderStatusNote.hidden = false;
+
         finishProgress(startTime, true);
         outputContainer.scrollIntoView({ behavior: "smooth", block: "nearest" });
       } catch (err) {
@@ -1236,7 +1261,7 @@ ${panelBlueprint}`;
       }
     });
 
-    // --- DOWNLOAD TO FUNNIES FOLDER ON MY COMPUTER ---
+    // --- DOWNLOAD TO MY FUNNIES FOLDER ---
     downloadFunniesBtn.addEventListener("click", async () => {
       const scriptText = stripContentEl.textContent;
       const safeSeries = state.series.replace(/[^a-z0-9]+/gi, "_").replace(/^_|_$/g, "");
@@ -1253,7 +1278,6 @@ ${panelBlueprint}`;
       const fullFileContent = fileHeader + scriptText;
       const originalBtnText = downloadFunniesBtn.textContent;
 
-      // Use modern "Save As" picker when supported (Chrome/Edge) so user can select Desktop\Funnies Folder directly
       if (window.showSaveFilePicker) {
         try {
           const fileHandle = await window.showSaveFilePicker({
@@ -1270,14 +1294,13 @@ ${panelBlueprint}`;
           await writable.write(fullFileContent);
           await writable.close();
 
-          downloadFunniesBtn.textContent = "✅ Saved to Funnies Folder!";
+          downloadFunniesBtn.textContent = "✅ Saved to My Funnies Folder!";
           folderStatusNote.innerHTML = `✅ Saved <strong>${suggestedFilename}</strong> to <code>${TARGET_FOLDER_PATH}</code>`;
           setTimeout(() => {
             downloadFunniesBtn.textContent = originalBtnText;
           }, 2600);
           return;
         } catch (err) {
-          // If user cancels the Save dialog, simply stop without error
           if (err && err.name === "AbortError") {
             return;
           }
@@ -1297,7 +1320,7 @@ ${panelBlueprint}`;
 
       downloadFunniesBtn.textContent = "✅ Downloaded!";
       folderStatusNote.innerHTML =
-        `✅ Downloaded <strong>${suggestedFilename}</strong> — move or save it into <code>${TARGET_FOLDER_PATH}</code>`;
+        `✅ Downloaded <strong>${suggestedFilename}</strong> — save it into <code>${TARGET_FOLDER_PATH}</code>`;
       setTimeout(() => {
         downloadFunniesBtn.textContent = originalBtnText;
       }, 2600);
